@@ -2,9 +2,9 @@ package app.kiostix.kiostixscanner.model
 
 import io.realm.RealmObject
 
-class User: RealmObject() {
+open class User: RealmObject() {
 
-    var id = Int
-    var fullname = String
+    var fullname: String? = null
+    var token: String? = null
 
 }
