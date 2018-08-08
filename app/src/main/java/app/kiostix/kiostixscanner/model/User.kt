@@ -6,5 +6,6 @@ open class User: RealmObject() {
 
     var fullname: String? = null
     var token: String? = null
+    var email: String? = null
 
 }
