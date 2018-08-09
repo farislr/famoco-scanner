@@ -2,6 +2,6 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
-        android:id="@+id/LogoutItem"
-        android:title="Logout" />
+        android:id="@+id/ResetItem"
+        android:title="Reset" />
 </menu>

@@ -39,19 +39,23 @@ class LoginActivity : AppCompatActivity() {
             val login = object : JsonObjectRequest(Request.Method.POST,
                     apiClient.login,
                     body,
-                    Response.Listener { response: JSONObject? ->
-                        Toast.makeText(this, response.toString(), Toast.LENGTH_SHORT).show()
-                        realm.executeTransaction { it2: Realm? ->
-                            val realmResult: RealmResults<User> = realm.where<User>().findAll()
-                            realmResult.deleteFirstFromRealm()
-                            val user = realm.createObject<User>()
-                            val data = response?.getJSONObject("data")
-                            user.fullname = data?.getString("fullname")
-                            user.email = data?.getString("email")
-                            user.token = data?.getString("token")
+                    Response.Listener { response ->
+//                        Toast.makeText(this, response.toString(), Toast.LENGTH_SHORT).show()
+                        if (response.getString("message").equals("success")) {
+                            realm.executeTransaction { it2: Realm? ->
+                                val realmResult: RealmResults<User> = realm.where<User>().findAll()
+                                realmResult.deleteFirstFromRealm()
+                                val user = realm.createObject<User>()
+                                val data = response?.getJSONObject("data")
+                                user.fullname = data?.getString("fullname")
+                                user.email = data?.getString("email")
+                                user.token = data?.getString("token")
+                            }
+                            val toMainActivity = Intent(this, MainActivity::class.java)
+                            startActivity(toMainActivity)
+                        } else {
+                            Toast.makeText(this, response.getString("message"), Toast.LENGTH_SHORT).show()
                         }
-                        val toMainActivity = Intent(this, MainActivity::class.java)
-                        startActivity(toMainActivity)
                     },
                     Response.ErrorListener { error: VolleyError? ->
                         Toast.makeText(this, error.toString(), Toast.LENGTH_SHORT).show()
