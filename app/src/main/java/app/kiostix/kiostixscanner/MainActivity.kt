@@ -9,6 +9,7 @@ import android.view.View
 import android.widget.*
 import app.kiostix.kiostixscanner.api.ApiClient
 import app.kiostix.kiostixscanner.auth.LoginActivity
+import app.kiostix.kiostixscanner.model.DeviceIdSpinnerModel
 import app.kiostix.kiostixscanner.model.Ticket
 import app.kiostix.kiostixscanner.model.User
 import com.android.volley.AuthFailureError
@@ -18,7 +19,6 @@ import com.android.volley.VolleyError
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
 import io.realm.Realm
-import io.realm.RealmResults
 import io.realm.kotlin.*
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.sync_action_layout.*
@@ -29,9 +29,12 @@ import org.json.JSONArray
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.URL
+import android.widget.AdapterView
 
 
-class MainActivity : AppCompatActivity() {
+
+
+class MainActivity : AppCompatActivity(), AdapterView.OnItemSelectedListener {
 
     private val realm: Realm? = Realm.getDefaultInstance()
     private val apiClient = ApiClient()
@@ -73,7 +76,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        deviceId()
+        initDeviceId()
     }
 
     private fun checkSession():Boolean {
@@ -94,7 +97,7 @@ class MainActivity : AppCompatActivity() {
         startActivity(toLoginActivity)
     }
 
-    private fun deviceId() {
+    private fun initDeviceId() {
         val queue = Volley.newRequestQueue(this)
         val getDeviceId = object : JsonObjectRequest(
                 Request.Method.GET,
@@ -103,13 +106,17 @@ class MainActivity : AppCompatActivity() {
                 Response.Listener { response ->
                     if (response.getString("message") == "success") {
                         val getDevicesList = response.getJSONArray("data")
-                        val arrayList = ArrayList<String>()
+                        val arrayList = ArrayList<DeviceIdSpinnerModel>()
                         for (i in 0 until getDevicesList.length()) {
                             val data = getDevicesList.getJSONObject(i)
-                            arrayList.add(data.getString("device_id"))
+                            arrayList.add(DeviceIdSpinnerModel(
+                                    data.getString("device_id"),
+                                    data.getString("device_name")
+                            ))
                         }
-                        val arrayAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, arrayList)
-                        DeviceSpinner.adapter = arrayAdapter
+                        val deviceIdAdapter = DeviceIdAdapter(this, android.R.layout.simple_spinner_dropdown_item, arrayList)
+                        DeviceSpinner.adapter = deviceIdAdapter
+                        DeviceSpinner.onItemSelectedListener = this
                     } else {
                         toast("error")
                     }
@@ -155,5 +162,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
         return super.onOptionsItemSelected(item)
+    }
+
+    override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun onNothingSelected(parent: AdapterView<*>?) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 }
