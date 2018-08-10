@@ -3,7 +3,8 @@
     package="app.kiostix.kiostixscanner">
 
     <uses-permission android:name="android.permission.INTERNET"/>
-
+    <uses-permission android:name="android.permission.BARCODE_SCANNER" />
+    <uses-permission android:name="android.permission.CAMERA" />
 
     <application
         android:name=".base.BaseApp"

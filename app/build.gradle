@@ -41,5 +41,5 @@ dependencies {
     implementation "org.jetbrains.anko:anko-appcompat-v7-commons:$anko_version"
     implementation "com.google.dagger:dagger:$dagger_version"
     kapt "com.google.dagger:dagger-compiler:$dagger_version"
-    implementation files("libs/motorola-sdl.jar")
+    implementation files("libs/fx300-2-barcodescannerSDK.jar")
 }

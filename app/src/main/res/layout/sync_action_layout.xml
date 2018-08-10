@@ -16,7 +16,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toBottomOf="@+id/DeviceCard">
 
         <android.support.constraint.ConstraintLayout
             android:id="@+id/DownloadLayout"
@@ -53,10 +53,16 @@
         android:id="@+id/DeviceCard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="16dp"
+        app:cardCornerRadius="3dp"
+        app:cardElevation="6dp"
         app:layout_constraintBottom_toTopOf="@+id/DownloadCard"
-        app:layout_constraintEnd_toEndOf="@+id/DownloadCard"
-        app:layout_constraintStart_toStartOf="@+id/DownloadCard">
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed">
 
         <android.support.constraint.ConstraintLayout
             android:layout_width="match_parent"
@@ -74,10 +80,10 @@
                 android:id="@+id/DeviceSpinner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:layout_marginEnd="8dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="32dp"
+                android:layout_marginEnd="8dp"
+                android:layout_marginBottom="16dp"
                 android:spinnerMode="dialog"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
