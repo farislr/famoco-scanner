@@ -9,9 +9,6 @@ import android.view.View
 import android.widget.*
 import app.kiostix.kiostixscanner.api.ApiClient
 import app.kiostix.kiostixscanner.auth.LoginActivity
-import app.kiostix.kiostixscanner.model.DeviceIdSpinnerModel
-import app.kiostix.kiostixscanner.model.Ticket
-import app.kiostix.kiostixscanner.model.User
 import com.android.volley.AuthFailureError
 import com.android.volley.Request
 import com.android.volley.Response
@@ -32,10 +29,13 @@ import java.io.InputStreamReader
 import java.net.URL
 import android.widget.AdapterView
 import app.kiostix.kiostixscanner.adapter.DeviceIdAdapter
+import app.kiostix.kiostixscanner.model.*
 import com.zebra.adc.decoder.BarCodeReader
 import com.zebra.adc.decoder.BarCodeReader.ParamNum.LASER_ON_PRIM
 import org.json.JSONObject
 import java.lang.Exception
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : AppCompatActivity(),
         AdapterView.OnItemSelectedListener,
@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity(),
     private val realm: Realm? = Realm.getDefaultInstance()
     private val apiClient = ApiClient()
     private lateinit var currentDeviceId: String
+    private lateinit var currentDeviceName: String
 
     var PARAM_NUM = 765
     var PARAM_VAL1 = 0
@@ -86,7 +87,10 @@ class MainActivity : AppCompatActivity(),
 
         DownloadCard.setOnClickListener {
             val param = JSONObject()
-            param.put("device_id", currentDeviceId)
+            realm?.executeTransaction { _ ->
+                val device = realm.where<Device>().findAll()
+                param.put("device_id", device[0]?.deviceId)
+            }
             val queue = Volley.newRequestQueue(this)
             val getTxt = object : JsonObjectRequest(
                     Request.Method.POST,
@@ -272,7 +276,12 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-        currentDeviceId = (parent?.selectedItem as DeviceIdSpinnerModel).deviceId
+        realm?.executeTransaction {
+            realm.delete<Device>()
+            val device = realm.createObject<Device>()
+            device.deviceId = (parent?.selectedItem as DeviceIdSpinnerModel).deviceId
+            device.deviceName = (parent?.selectedItem as DeviceIdSpinnerModel).deviceName
+        }
     }
 
     override fun onNothingSelected(parent: AdapterView<*>?) {
@@ -280,7 +289,7 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onDecodeComplete(symbology: Int, length: Int, data: ByteArray?, reader: BarCodeReader?) {
-        if (length == 0 || data == null || data.size == 0) {
+        if (length == 0 || data == null || data.isEmpty()) {
             return
         }
         try {
@@ -314,15 +323,47 @@ class MainActivity : AppCompatActivity(),
                         for (i2 in 0 until sObj.length()) {
                            val tArr = sObj.getJSONObject(i2)
                             for (i3 in 0 until tArr.length()) {
+                                val ticketName = tArr["ticket_name"] as String
                                 val tObj = tArr.getJSONArray("transaction_data")
                                 for (i4 in 0 until tObj.length()) {
                                     val trArr = tObj.getJSONObject(i4)
                                     for (i5 in 0 until trArr.length()) {
                                         val getBarcode = trArr.getString("barcode")
-                                        if (getBarcode == decodedText) {
+                                        if (getBarcode == decodedText && !getBarcode.isBlank() ) {
                                             failed = false
-                                            toast("success")
-                                            break@loop
+                                            val formatDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                                            val transaction = realm.where<Transaction>().equalTo("barcode", decodedText).findFirst()
+                                            if (transaction != null) {
+                                                // out
+                                                if (transaction.status) {
+                                                    transaction.status = false
+                                                    transaction.lastOut = formatDateTime.format(Date())
+                                                    transaction.outCount.increment(1)
+                                                    toast("success")
+                                                    break@loop
+                                                }
+                                                // in
+                                                else {
+                                                    transaction.status = true
+                                                    transaction.lastIn = formatDateTime.format(Date())
+                                                    transaction.inCount.increment(1)
+                                                    toast("success")
+                                                    break@loop
+                                                }
+                                            } else {
+                                                val transaction = realm.createObject<Transaction>(getBarcode)
+                                                val device = realm.where<Device>().findAll()
+                                                transaction.famocoId = device[0]?.deviceId as String
+                                                transaction.famocoName = device[0]?.deviceName as String
+                                                transaction.tEventName = ticket[ii]?.eventName
+                                                transaction.ticketName = ticketName
+                                                transaction.lastIn = formatDateTime.format(Date())
+                                                transaction.inCount.set(0)
+                                                transaction.outCount.set(0)
+                                                transaction.status = true
+                                                toast("success")
+                                                break@loop
+                                            }
                                         } else {
                                             failed = true
                                         }
