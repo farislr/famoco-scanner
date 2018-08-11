@@ -90,13 +90,15 @@ class MainActivity : AppCompatActivity(),
         }
 
         val count = realm?.where<Transaction>()?.count()
-        val lastTransaction = realm?.where<Transaction>()?.findAll()?.last()
-        if (count != null) {
+        if (count != 0L) {
+            val lastTransaction = realm?.where<Transaction>()?.findAll()?.last()
             ApprovedSub.text = count.toString()
             EventNameSub.text = lastTransaction?.tEventName
             TicketNameSub.text = lastTransaction?.ticketName
         }
+
         DownloadCard.setOnClickListener {
+            ProgressBar.visibility = View.VISIBLE
             val param = JSONObject()
             realm?.executeTransaction { _ ->
                 val device = realm.where<Device>().findAll()
@@ -120,24 +122,16 @@ class MainActivity : AppCompatActivity(),
                             }
                             uiThread { _: MainActivity ->
                                 if (exception != null) {
-                                    toast("Error Downloading data, please try again")
+//                                    toast("Error Downloading data, please try again")
+                                    toast(exception.toString())
                                 } else {
-                                    val dataArray = JSONArray(result)
-                                    var ticket: Ticket
-                                    realm?.executeTransaction {realm ->
-                                        realm.delete<Ticket>()
-                                    }
-                                    for (i in 0 until dataArray.length()) {
-                                        val data = dataArray.getJSONObject(i)
-                                        realm?.executeTransaction {realm ->
-                                            ticket = realm.createObject()
-                                            ticket.eventName = data.getString("event_name")
-                                            ticket.scheduleData = data.getString("schedule_data")
-                                        }
+                                    realm?.executeTransactionAsync { r ->
+                                        r.createAllFromJson(Ticket::class.java, result!!)
                                     }
                                     toast("Data saved")
                                     SyncLayout.visibility = View.GONE
                                     ScanLayout.visibility = View.VISIBLE
+                                    ProgressBar.visibility = View.GONE
                                 }
                             }
                         }
@@ -257,8 +251,9 @@ class MainActivity : AppCompatActivity(),
         queue.add(getDeviceId)
     }
 
-    private fun downloadFile(txtLink: Any): String {
-        val url = URL(txtLink as String)
+    private fun downloadFile(txtLink: Any): String? {
+//        val url = URL(txtLink as String)
+        val url = URL(apiClient.cdnDev)
         val connection = url.openConnection()
         connection.connectTimeout = 60000
 
@@ -321,12 +316,17 @@ class MainActivity : AppCompatActivity(),
     }
 
     private fun handleScanResult(decodedText: String) {
+        ProgressBar.visibility = View.VISIBLE
         BarcodeEdtxt.setText(decodedText)
-        realm?.executeTransaction { _ ->
+        var message = String()
+        var failed = true
+        var vTicketName = String()
+        var vEventName = String()
+        var vApproved = String()
+        realm?.executeTransactionAsync({ realm ->
             val ticket = realm.where<Ticket>().findAll()
-            var failed: Boolean = true
             loop@ for (ii in 0 until ticket.size) {
-                val data = JSONArray(ticket[ii]?.scheduleData)
+                val data = JSONArray(ticket[ii]?.schedule_data)
                 for (i in 0 until data.length()) {
                     val sArr = data.getJSONObject(i)
                     for (i1 in 0 until sArr.length()) {
@@ -350,7 +350,7 @@ class MainActivity : AppCompatActivity(),
                                                     transaction.status = false
                                                     transaction.lastOut = formatDateTime.format(Date())
                                                     transaction.outCount.increment(1)
-                                                    Toasty.success(this, "Ticket terupdate, Silahkan Keluar").show()
+                                                    message = "Ticket terupdate, Silahkan Keluar"
                                                     break@loop
                                                 }
                                                 // in
@@ -358,7 +358,7 @@ class MainActivity : AppCompatActivity(),
                                                     transaction.status = true
                                                     transaction.lastIn = formatDateTime.format(Date())
                                                     transaction.inCount.increment(1)
-                                                    Toasty.success(this, "Ticket terupdate, Silahkan Masuk").show()
+                                                    message = "Ticket terupdate, Silahkan Masuk"
                                                     break@loop
                                                 }
                                             } else {
@@ -366,17 +366,17 @@ class MainActivity : AppCompatActivity(),
                                                 val device = realm.where<Device>().findAll()
                                                 transaction.famocoId = device[0]?.deviceId as String
                                                 transaction.famocoName = device[0]?.deviceName as String
-                                                transaction.tEventName = ticket[ii]?.eventName
+                                                transaction.tEventName = ticket[ii]?.event_name
                                                 transaction.ticketName = ticketName
                                                 transaction.lastIn = formatDateTime.format(Date())
                                                 transaction.inCount.set(0)
                                                 transaction.outCount.set(0)
                                                 transaction.status = true
                                                 val count = realm.where<Transaction>().findAll().count()
-                                                ApprovedSub.text = count.toString()
-                                                TicketNameSub.text = transaction.ticketName
-                                                EventNameSub.text = transaction.tEventName
-                                                Toasty.success(this, "Ticket berhasil, Silahkan Masuk").show()
+                                                vTicketName = transaction.ticketName.toString()
+                                                vEventName = transaction.tEventName.toString()
+                                                vApproved = count.toString()
+                                                message = "Ticket berhasil, Silahkan Masuk"
                                                 break@loop
                                             }
                                         } else {
@@ -391,9 +391,20 @@ class MainActivity : AppCompatActivity(),
             }
             if (failed) {
                 vibrate.vibrate(50)
-                Toasty.error(this, "Ticket tidak terdaftar").show()
+                message = "Ticket tidak terdaftar"
             }
-        }
+
+        }, {
+            if (!vApproved.isBlank()) {
+                ApprovedSub.text = vApproved
+                EventNameSub.text = vEventName
+                TicketNameSub.text = vTicketName
+            }
+            scannedResultAlert(message, failed)
+            ProgressBar.visibility = View.GONE
+        }, {
+            toast(it.toString())
+        })
         mode = Mode.IDLE
     }
 
@@ -412,5 +423,13 @@ class MainActivity : AppCompatActivity(),
 
     private fun clearText() {
         BarcodeEdtxt.setText("")
+    }
+
+    private fun scannedResultAlert(message: String, failed: Boolean) {
+        if (failed) {
+            Toasty.error(this, message).show()
+        } else {
+            Toasty.success(this, message).show()
+        }
     }
 }

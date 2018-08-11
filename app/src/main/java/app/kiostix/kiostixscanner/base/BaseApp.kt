@@ -23,6 +23,7 @@ class BaseApp: Application() {
                         .enableDumpapp(Stetho.defaultDumperPluginsProvider(this))
                         .enableWebKitInspector(RealmInspectorModulesProvider.builder(this)
                                 .withDeleteIfMigrationNeeded(true)
+                                .withLimit(5000)
                                 .build())
                         .build());
     }
