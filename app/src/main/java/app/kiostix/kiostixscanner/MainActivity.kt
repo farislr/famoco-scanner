@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Environment
 import android.os.Vibrator
 import android.view.Menu
 import android.view.MenuItem
@@ -36,6 +37,7 @@ import com.zebra.adc.decoder.BarCodeReader
 import com.zebra.adc.decoder.BarCodeReader.ParamNum.LASER_ON_PRIM
 import es.dmoral.toasty.Toasty
 import org.json.JSONObject
+import java.io.File
 import java.lang.Exception
 import java.text.SimpleDateFormat
 import java.util.*
@@ -277,6 +279,9 @@ class MainActivity : AppCompatActivity(),
                 SyncLayout.visibility = View.VISIBLE
                 ScanLayout.visibility = View.GONE
             }
+            R.id.ExportItem -> {
+                exportRealm()
+            }
         }
         return super.onOptionsItemSelected(item)
     }
@@ -431,5 +436,14 @@ class MainActivity : AppCompatActivity(),
         } else {
             Toasty.success(this, message).show()
         }
+    }
+
+    private fun exportRealm() {
+        val file = File(Environment.getExternalStorageDirectory().path+"/default.realm")
+        if (file.exists()) {
+            file.delete()
+        }
+        realm?.writeCopyTo(file)
+        toast("Successfully exported")
     }
 }

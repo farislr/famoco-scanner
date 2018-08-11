@@ -19,8 +19,14 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        debug_minify {
+            jniDebuggable false
+            renderscriptDebuggable false
+            minifyEnabled true
+            zipAlignEnabled true
         }
     }
     buildToolsVersion '27.0.3'
