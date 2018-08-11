@@ -1,8 +1,10 @@
 package app.kiostix.kiostixscanner
 
+import android.content.Context
 import android.content.Intent
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Vibrator
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -32,6 +34,7 @@ import app.kiostix.kiostixscanner.adapter.DeviceIdAdapter
 import app.kiostix.kiostixscanner.model.*
 import com.zebra.adc.decoder.BarCodeReader
 import com.zebra.adc.decoder.BarCodeReader.ParamNum.LASER_ON_PRIM
+import es.dmoral.toasty.Toasty
 import org.json.JSONObject
 import java.lang.Exception
 import java.text.SimpleDateFormat
@@ -44,8 +47,6 @@ class MainActivity : AppCompatActivity(),
 
     private val realm: Realm? = Realm.getDefaultInstance()
     private val apiClient = ApiClient()
-    private lateinit var currentDeviceId: String
-    private lateinit var currentDeviceName: String
 
     var PARAM_NUM = 765
     var PARAM_VAL1 = 0
@@ -70,6 +71,7 @@ class MainActivity : AppCompatActivity(),
 
     var mode: Any? = null
     private var bcr: BarCodeReader? = null
+    private lateinit var vibrate: Vibrator
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,12 +81,21 @@ class MainActivity : AppCompatActivity(),
 //            backToLogin()
 //        }
 
+        vibrate = this.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+
         val getTicket = realm?.where<Ticket>()?.findAll()
         if (getTicket!!.size > 0) {
             SyncLayout.visibility = View.GONE
             ScanLayout.visibility = View.VISIBLE
         }
 
+        val count = realm?.where<Transaction>()?.count()
+        val lastTransaction = realm?.where<Transaction>()?.findAll()?.last()
+        if (count != null) {
+            ApprovedSub.text = count.toString()
+            EventNameSub.text = lastTransaction?.tEventName
+            TicketNameSub.text = lastTransaction?.ticketName
+        }
         DownloadCard.setOnClickListener {
             val param = JSONObject()
             realm?.executeTransaction { _ ->
@@ -339,7 +350,7 @@ class MainActivity : AppCompatActivity(),
                                                     transaction.status = false
                                                     transaction.lastOut = formatDateTime.format(Date())
                                                     transaction.outCount.increment(1)
-                                                    toast("success")
+                                                    Toasty.success(this, "Ticket terupdate, Silahkan Keluar").show()
                                                     break@loop
                                                 }
                                                 // in
@@ -347,7 +358,7 @@ class MainActivity : AppCompatActivity(),
                                                     transaction.status = true
                                                     transaction.lastIn = formatDateTime.format(Date())
                                                     transaction.inCount.increment(1)
-                                                    toast("success")
+                                                    Toasty.success(this, "Ticket terupdate, Silahkan Masuk").show()
                                                     break@loop
                                                 }
                                             } else {
@@ -361,7 +372,11 @@ class MainActivity : AppCompatActivity(),
                                                 transaction.inCount.set(0)
                                                 transaction.outCount.set(0)
                                                 transaction.status = true
-                                                toast("success")
+                                                val count = realm.where<Transaction>().findAll().count()
+                                                ApprovedSub.text = count.toString()
+                                                TicketNameSub.text = transaction.ticketName
+                                                EventNameSub.text = transaction.tEventName
+                                                Toasty.success(this, "Ticket berhasil, Silahkan Masuk").show()
                                                 break@loop
                                             }
                                         } else {
@@ -375,7 +390,8 @@ class MainActivity : AppCompatActivity(),
                 }
             }
             if (failed) {
-                toast("failed")
+                vibrate.vibrate(50)
+                Toasty.error(this, "Ticket tidak terdaftar").show()
             }
         }
         mode = Mode.IDLE

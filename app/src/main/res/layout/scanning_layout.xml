@@ -2,6 +2,7 @@
 <android.support.constraint.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
@@ -9,15 +10,15 @@
         android:id="@+id/BarcodeCard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginStart="16dp"
         app:cardCornerRadius="3dp"
         app:cardElevation="3dp"
         app:layout_constraintBottom_toTopOf="@+id/ScanCard"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/DetailsCard"
         app:layout_constraintVertical_chainStyle="packed">
 
         <android.support.constraint.ConstraintLayout
@@ -97,6 +98,107 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
+        </android.support.constraint.ConstraintLayout>
+    </android.support.v7.widget.CardView>
+
+    <android.support.v7.widget.CardView
+        android:id="@+id/DetailsCard"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        app:cardCornerRadius="3dp"
+        app:cardElevation="3dp"
+        app:layout_constraintBottom_toTopOf="@+id/BarcodeCard"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed">
+
+        <android.support.constraint.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layout_constraintBottom_toBottomOf="@+id/ApprovedTitle"
+            app:layout_constraintTop_toBottomOf="@+id/ApprovedTitle">
+
+            <TextView
+                android:id="@+id/EventNameTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:layout_marginStart="24dp"
+                android:layout_marginTop="24dp"
+                android:text="Event Name"
+                android:textSize="18sp"
+                app:layout_constraintEnd_toStartOf="@+id/ApprovedTitle"
+                app:layout_constraintHorizontal_chainStyle="spread_inside"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/FamocoID" />
+
+            <TextView
+                android:id="@+id/EventNameSub"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:layout_constraintStart_toStartOf="@+id/EventNameTitle"
+                app:layout_constraintTop_toBottomOf="@+id/EventNameTitle" />
+
+            <TextView
+                android:id="@+id/ApprovedTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="24dp"
+                android:layout_marginStart="16dp"
+                android:text="Approved"
+                android:textSize="18sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/EventNameTitle"
+                app:layout_constraintTop_toTopOf="@+id/EventNameTitle" />
+
+            <TextView
+                android:id="@+id/ApprovedSub"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="0"
+                app:layout_constraintStart_toStartOf="@+id/ApprovedTitle"
+                app:layout_constraintTop_toBottomOf="@+id/ApprovedTitle" />
+
+            <TextView
+                android:id="@+id/FamocoID"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bottom_border"
+                android:gravity="center"
+                android:padding="8dp"
+                android:text="Famoco ID"
+                android:textSize="20sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/TicketNameTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="48dp"
+                android:layout_marginTop="24dp"
+                android:text="Ticket Name"
+                android:textSize="18sp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="@+id/EventNameTitle"
+                app:layout_constraintTop_toBottomOf="@+id/EventNameSub" />
+
+            <TextView
+                android:id="@+id/TicketNameSub"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:layout_constraintStart_toStartOf="@+id/TicketNameTitle"
+                app:layout_constraintTop_toBottomOf="@+id/TicketNameTitle" />
         </android.support.constraint.ConstraintLayout>
     </android.support.v7.widget.CardView>
 
