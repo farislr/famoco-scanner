@@ -7,4 +7,7 @@
     <item
         android:id="@+id/ExportItem"
         android:title="Export" />
+    <item
+        android:id="@+id/ExportJsonItem"
+        android:title="Export to JSON" />
 </menu>

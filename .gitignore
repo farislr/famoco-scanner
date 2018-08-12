@@ -15,3 +15,6 @@
 .idea/runConfigurations.xml
 .idea/vcs.xml
 7.txt
+app/src/main/jniLibs/
+logErrors.txt
+myLogs.txt

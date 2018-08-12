@@ -23,10 +23,10 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         debug_minify {
-            jniDebuggable false
             renderscriptDebuggable false
             minifyEnabled true
             zipAlignEnabled true
+            debuggable true
         }
     }
     buildToolsVersion '27.0.3'

@@ -2,43 +2,46 @@ package app.kiostix.kiostixscanner
 
 import android.content.Context
 import android.content.Intent
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Environment
 import android.os.Vibrator
+import android.support.v7.app.AppCompatActivity
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import android.widget.*
+import android.widget.AdapterView
+import android.widget.Toast
+import app.kiostix.kiostixscanner.adapter.DeviceIdAdapter
 import app.kiostix.kiostixscanner.api.ApiClient
 import app.kiostix.kiostixscanner.auth.LoginActivity
+import app.kiostix.kiostixscanner.model.*
 import com.android.volley.AuthFailureError
 import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.VolleyError
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
+import com.zebra.adc.decoder.BarCodeReader
+import com.zebra.adc.decoder.BarCodeReader.ParamNum.LASER_ON_PRIM
+import es.dmoral.toasty.Toasty
 import io.realm.Realm
-import io.realm.kotlin.*
+import io.realm.kotlin.createObject
+import io.realm.kotlin.delete
+import io.realm.kotlin.where
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.android.synthetic.main.sync_action_layout.*
 import kotlinx.android.synthetic.main.scanning_layout.*
+import kotlinx.android.synthetic.main.sync_action_layout.*
 import org.jetbrains.anko.doAsync
 import org.jetbrains.anko.toast
 import org.jetbrains.anko.uiThread
 import org.json.JSONArray
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.URL
-import android.widget.AdapterView
-import app.kiostix.kiostixscanner.adapter.DeviceIdAdapter
-import app.kiostix.kiostixscanner.model.*
-import com.zebra.adc.decoder.BarCodeReader
-import com.zebra.adc.decoder.BarCodeReader.ParamNum.LASER_ON_PRIM
-import es.dmoral.toasty.Toasty
 import org.json.JSONObject
+import java.io.BufferedReader
 import java.io.File
+import java.io.FileWriter
+import java.io.InputStreamReader
 import java.lang.Exception
+import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -280,7 +283,16 @@ class MainActivity : AppCompatActivity(),
                 ScanLayout.visibility = View.GONE
             }
             R.id.ExportItem -> {
-                exportRealm()
+                val count = realm?.where<Transaction>()?.count()
+                if (count != 0L) {
+                    exportRealm()
+                }
+            }
+            R.id.ExportJsonItem -> {
+                val count = realm?.where<Transaction>()?.count()
+                if (count != 0L) {
+                    exportRealmToJson()
+                }
             }
         }
         return super.onOptionsItemSelected(item)
@@ -444,6 +456,39 @@ class MainActivity : AppCompatActivity(),
             file.delete()
         }
         realm?.writeCopyTo(file)
-        toast("Successfully exported")
+        Toasty.info(this, "Successfully exported to Realm").show()
     }
-}
+
+    private fun exportRealmToJson() {
+        val transaction = realm?.where<Transaction>()?.findAll()
+        val dataArray = JSONArray()
+        val dataObj = JSONObject()
+        transaction?.forEach { tran ->
+            dataObj.put("famocoId", tran.famocoId)
+            dataObj.put("famocoName", tran.famocoName)
+            dataObj.put("tEventName", tran.tEventName)
+            dataObj.put("ticketName", tran.ticketName)
+            dataObj.put("barcode", tran.barcode)
+            dataObj.put("inCount", tran.inCount)
+            dataObj.put("outCount", tran.outCount)
+            dataObj.put("lastIn", tran.lastIn)
+            dataObj.put("lastOut", tran.lastOut)
+            dataObj.put("status", tran.status)
+            dataArray.put(dataObj)
+        }
+
+        try {
+            val root = File(Environment.getExternalStorageDirectory(), "exported_transaction")
+            if (!root.exists()) root.mkdirs()
+            val json = File(root, "transaction.json")
+            val writer = FileWriter(json)
+            writer.append(dataArray.toString())
+            writer.flush()
+            writer.close()
+            Toasty.info(this, "Successfully exported to JSON").show()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+    }
+ }
