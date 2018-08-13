@@ -258,7 +258,7 @@ class MainActivity : AppCompatActivity(),
 
     private fun downloadFile(txtLink: Any): String? {
 //        val url = URL(txtLink as String)
-        val url = URL(apiClient.cdnDev)
+        val url = URL(txtLink as String)
         val connection = url.openConnection()
         connection.connectTimeout = 60000
 
