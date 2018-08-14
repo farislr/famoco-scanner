@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.TextView
+import app.kiostix.kiostixscanner.R
 import app.kiostix.kiostixscanner.model.DeviceIdSpinnerModel
 
 class DeviceIdAdapter(context: Context, resource:Int, private val arrayList: ArrayList<DeviceIdSpinnerModel>) :
@@ -19,8 +20,8 @@ class DeviceIdAdapter(context: Context, resource:Int, private val arrayList: Arr
         if (convertView == null) {
             holder = ViewHolder()
             val inflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-            retView = inflater.inflate(android.R.layout.simple_spinner_dropdown_item, null, true)
-            holder.deviceName = retView.findViewById(android.R.id.text1)
+            retView = inflater.inflate(R.layout.new_default_spinner_dropdown, null, true)
+            holder.deviceName = retView.findViewById(R.id.text4)
 
             retView.tag = holder
         } else {
@@ -48,8 +49,8 @@ class DeviceIdAdapter(context: Context, resource:Int, private val arrayList: Arr
         if (convertView == null) {
             holder = ViewHolder()
             val inflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-            retView = inflater.inflate(android.R.layout.simple_spinner_item, null, true)
-            holder.deviceNameDropDown = retView.findViewById(android.R.id.text1)
+            retView = inflater.inflate(R.layout.new_default_spinner_dropdown, null, true)
+            holder.deviceNameDropDown = retView.findViewById(R.id.text4)
 
             retView.tag = holder
         } else {

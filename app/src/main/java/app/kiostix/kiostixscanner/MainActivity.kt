@@ -10,6 +10,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import app.kiostix.kiostixscanner.adapter.DeviceIdAdapter
 import app.kiostix.kiostixscanner.api.ApiClient
@@ -77,6 +78,9 @@ class MainActivity : AppCompatActivity(),
     var mode: Any? = null
     private var bcr: BarCodeReader? = null
     private lateinit var vibrate: Vibrator
+    companion object {
+        var gateName = String()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,6 +89,9 @@ class MainActivity : AppCompatActivity(),
 //        if (!checkSession()) {
 //            backToLogin()
 //        }
+
+        GateSpinner.adapter = ArrayAdapter.createFromResource(this, R.array.gate_name, R.layout.gate_spinner_dropdown)
+        GateSpinner.onItemSelectedListener = GateChoice()
 
         vibrate = this.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
@@ -105,8 +112,8 @@ class MainActivity : AppCompatActivity(),
         DownloadCard.setOnClickListener {
             ProgressBar.visibility = View.VISIBLE
             val param = JSONObject()
-            realm?.executeTransaction { _ ->
-                val device = realm.where<Device>().findAll()
+            realm?.executeTransaction {r ->
+                val device = r.where<Device>().findAll()
                 param.put("device_id", device[0]?.deviceId)
             }
             val queue = Volley.newRequestQueue(this)
@@ -125,7 +132,7 @@ class MainActivity : AppCompatActivity(),
                             } catch (e: Exception) {
                                 exception = e
                             }
-                            uiThread { _: MainActivity ->
+                            uiThread {
                                 if (exception != null) {
 //                                    toast("Error Downloading data, please try again")
                                     toast(exception.toString())
@@ -154,7 +161,7 @@ class MainActivity : AppCompatActivity(),
             }
             queue.add(getTxt)
         }
-        ScanCard.setOnClickListener {
+        ScanInCard.setOnClickListener {
             when (mode) {
                 Mode.IDLE -> {
                     startScan()
@@ -234,7 +241,7 @@ class MainActivity : AppCompatActivity(),
                                     data.getString("device_name")
                             ))
                         }
-                        val deviceIdAdapter = DeviceIdAdapter(this, android.R.layout.simple_spinner_dropdown_item, arrayList)
+                        val deviceIdAdapter = DeviceIdAdapter(this, R.layout.new_default_spinner_dropdown, arrayList)
                         DeviceSpinner.adapter = deviceIdAdapter
                         DeviceSpinner.onItemSelectedListener = this
                     } else {
@@ -298,12 +305,26 @@ class MainActivity : AppCompatActivity(),
         return super.onOptionsItemSelected(item)
     }
 
+    class GateChoice: AdapterView.OnItemSelectedListener {
+        private val main = MainActivity
+
+        override fun onNothingSelected(p0: AdapterView<*>?) {
+            //
+        }
+
+        override fun onItemSelected(parent: AdapterView<*>?, view: View?, pos: Int, p3: Long) {
+            main.gateName = parent?.getItemAtPosition(pos).toString()
+        }
+
+    }
+
     override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
         realm?.executeTransaction {
-            realm.delete<Device>()
-            val device = realm.createObject<Device>()
+            it.delete<Device>()
+            val device = it.createObject<Device>()
             device.deviceId = (parent?.selectedItem as DeviceIdSpinnerModel).deviceId
-            device.deviceName = (parent?.selectedItem as DeviceIdSpinnerModel).deviceName
+            device.deviceName = (parent.selectedItem as DeviceIdSpinnerModel).deviceName
+            FamocoID.text = (parent.selectedItem as DeviceIdSpinnerModel).deviceName
         }
     }
 
@@ -363,38 +384,57 @@ class MainActivity : AppCompatActivity(),
                                             val transaction = realm.where<Transaction>().equalTo("barcode", decodedText).findFirst()
                                             if (transaction != null) {
                                                 // out
-                                                if (transaction.status) {
-                                                    transaction.status = false
-                                                    transaction.lastOut = formatDateTime.format(Date())
-                                                    transaction.outCount.increment(1)
-                                                    message = "Ticket terupdate, Silahkan Keluar"
-                                                    break@loop
-                                                }
-                                                // in
-                                                else {
-                                                    transaction.status = true
+                                                if (gateName == "In") {
+                                                    transaction.inside = true
                                                     transaction.lastIn = formatDateTime.format(Date())
                                                     transaction.inCount.increment(1)
                                                     message = "Ticket terupdate, Silahkan Masuk"
                                                     break@loop
                                                 }
+                                                // in
+                                                else {
+                                                    transaction.inside = false
+                                                    transaction.lastOut = formatDateTime.format(Date())
+                                                    transaction.outCount.increment(1)
+                                                    message = "Ticket terupdate, Silahkan Keluar"
+                                                    break@loop
+                                                }
                                             } else {
-                                                val transaction = realm.createObject<Transaction>(getBarcode)
-                                                val device = realm.where<Device>().findAll()
-                                                transaction.famocoId = device[0]?.deviceId as String
-                                                transaction.famocoName = device[0]?.deviceName as String
-                                                transaction.tEventName = ticket[ii]?.event_name
-                                                transaction.ticketName = ticketName
-                                                transaction.lastIn = formatDateTime.format(Date())
-                                                transaction.inCount.set(0)
-                                                transaction.outCount.set(0)
-                                                transaction.status = true
-                                                val count = realm.where<Transaction>().findAll().count()
-                                                vTicketName = transaction.ticketName.toString()
-                                                vEventName = transaction.tEventName.toString()
-                                                vApproved = count.toString()
-                                                message = "Ticket berhasil, Silahkan Masuk"
-                                                break@loop
+                                                if (gateName == "In") {
+                                                    val transaction = realm.createObject<Transaction>(getBarcode)
+                                                    val device = realm.where<Device>().findAll()
+                                                    transaction.famocoId = device[0]?.deviceId as String
+                                                    transaction.famocoName = device[0]?.deviceName as String
+                                                    transaction.tEventName = ticket[ii]?.event_name
+                                                    transaction.ticketName = ticketName
+                                                    transaction.lastIn = formatDateTime.format(Date())
+                                                    transaction.inCount.set(0)
+                                                    transaction.outCount.set(0)
+                                                    transaction.inside = true
+                                                    val count = realm.where<Transaction>().findAll().count()
+                                                    vTicketName = transaction.ticketName.toString()
+                                                    vEventName = transaction.tEventName.toString()
+                                                    vApproved = count.toString()
+                                                    message = "Ticket berhasil, Silahkan Masuk"
+                                                    break@loop
+                                                } else {
+                                                    val transaction = realm.createObject<Transaction>(getBarcode)
+                                                    val device = realm.where<Device>().findAll()
+                                                    transaction.famocoId = device[0]?.deviceId as String
+                                                    transaction.famocoName = device[0]?.deviceName as String
+                                                    transaction.tEventName = ticket[ii]?.event_name
+                                                    transaction.ticketName = ticketName
+                                                    transaction.lastIn = formatDateTime.format(Date())
+                                                    transaction.inCount.set(0)
+                                                    transaction.outCount.set(0)
+                                                    transaction.inside = false
+                                                    val count = realm.where<Transaction>().findAll().count()
+                                                    vTicketName = transaction.ticketName.toString()
+                                                    vEventName = transaction.tEventName.toString()
+                                                    vApproved = count.toString()
+                                                    message = "Ticket berhasil, Silahkan Keluar"
+                                                    break@loop
+                                                }
                                             }
                                         } else {
                                             failed = true
@@ -473,7 +513,7 @@ class MainActivity : AppCompatActivity(),
             dataObj.put("outCount", tran.outCount)
             dataObj.put("lastIn", tran.lastIn)
             dataObj.put("lastOut", tran.lastOut)
-            dataObj.put("status", tran.status)
+            dataObj.put("status", tran.inside)
             dataArray.put(dataObj)
         }
 

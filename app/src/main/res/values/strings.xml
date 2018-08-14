@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Kiostix Scanner</string>
+    <string-array name="gate_name">
+        <item>In</item>
+        <item>Out</item>
+    </string-array>
 </resources>
