@@ -132,7 +132,7 @@ class MainActivity : AppCompatActivity(),
                             } catch (e: Exception) {
                                 exception = e
                             }
-                            uiThread {
+                            uiThread { _ ->
                                 if (exception != null) {
 //                                    toast("Error Downloading data, please try again")
                                     toast(exception.toString())
@@ -195,6 +195,11 @@ class MainActivity : AppCompatActivity(),
 
     override fun onStop() {
         super.onStop()
+        releaseBarcode()
+    }
+
+    override fun onPause() {
+        super.onPause()
         releaseBarcode()
     }
 
@@ -264,7 +269,6 @@ class MainActivity : AppCompatActivity(),
     }
 
     private fun downloadFile(txtLink: Any): String? {
-//        val url = URL(txtLink as String)
         val url = URL(txtLink as String)
         val connection = url.openConnection()
         connection.connectTimeout = 60000
@@ -284,19 +288,44 @@ class MainActivity : AppCompatActivity(),
         when (item?.itemId) {
             R.id.ResetItem -> {
                 realm?.executeTransaction {
-                    realm.delete<Ticket>()
+                    val transactions = it.where<Transaction>().findAll()
+                    if (transactions.size > 0 ) {
+                        val famoco = it.where<Device>().findFirst()
+                        val history = it.createObject<History>()
+                        val jsonData = JSONObject()
+                        val jsonArray = JSONArray()
+                        val formatDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                        history.device_name = famoco?.deviceName
+                        history.created_at = formatDateTime.format(Date())
+                        transactions.forEach { v ->
+                            jsonData.put("famocoId", v.famocoId)
+                            jsonData.put("famocoName", v.famocoName)
+                            jsonData.put("tEventName", v.tEventName)
+                            jsonData.put("ticketName", v.ticketName)
+                            jsonData.put("barcode", v.barcode)
+                            jsonData.put("inCount", v.inCount)
+                            jsonData.put("outCount", v.outCount)
+                            jsonData.put("lastIn", v.lastIn)
+                            jsonData.put("lastOut", v.lastOut)
+                            jsonData.put("inside", v.inside)
+                            jsonArray.put(jsonData)
+                        }
+                        history.transaction_data = jsonArray.toString()
+                    }
+                    it.delete<Ticket>()
+                    it.delete<Transaction>()
                 }
                 SyncLayout.visibility = View.VISIBLE
                 ScanLayout.visibility = View.GONE
             }
             R.id.ExportItem -> {
-                val count = realm?.where<Transaction>()?.count()
+                val count = realm?.where<History>()?.count()
                 if (count != 0L) {
                     exportRealm()
                 }
             }
             R.id.ExportJsonItem -> {
-                val count = realm?.where<Transaction>()?.count()
+                val count = realm?.where<History>()?.count()
                 if (count != 0L) {
                     exportRealmToJson()
                 }
@@ -324,7 +353,7 @@ class MainActivity : AppCompatActivity(),
             val device = it.createObject<Device>()
             device.deviceId = (parent?.selectedItem as DeviceIdSpinnerModel).deviceId
             device.deviceName = (parent.selectedItem as DeviceIdSpinnerModel).deviceName
-            FamocoID.text = (parent.selectedItem as DeviceIdSpinnerModel).deviceName
+            FamocoID.text = device.deviceName
         }
     }
 
@@ -361,6 +390,7 @@ class MainActivity : AppCompatActivity(),
         var vTicketName = String()
         var vEventName = String()
         var vApproved = String()
+        var used = false
         realm?.executeTransactionAsync({ realm ->
             val ticket = realm.where<Ticket>().findAll()
             loop@ for (ii in 0 until ticket.size) {
@@ -383,20 +413,22 @@ class MainActivity : AppCompatActivity(),
                                             val formatDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
                                             val transaction = realm.where<Transaction>().equalTo("barcode", decodedText).findFirst()
                                             if (transaction != null) {
-                                                // out
+                                                // in
                                                 if (gateName == "In") {
+                                                    used = true
                                                     transaction.inside = true
                                                     transaction.lastIn = formatDateTime.format(Date())
                                                     transaction.inCount.increment(1)
-                                                    message = "Ticket terupdate, Silahkan Masuk"
+                                                    message = "Ticket telah digunakan"
                                                     break@loop
                                                 }
-                                                // in
+                                                // out
                                                 else {
+                                                    used = true
                                                     transaction.inside = false
                                                     transaction.lastOut = formatDateTime.format(Date())
                                                     transaction.outCount.increment(1)
-                                                    message = "Ticket terupdate, Silahkan Keluar"
+                                                    message = "Ticket telah digunakan"
                                                     break@loop
                                                 }
                                             } else {
@@ -415,6 +447,7 @@ class MainActivity : AppCompatActivity(),
                                                     vTicketName = transaction.ticketName.toString()
                                                     vEventName = transaction.tEventName.toString()
                                                     vApproved = count.toString()
+                                                    transaction.inCount.increment(1)
                                                     message = "Ticket berhasil, Silahkan Masuk"
                                                     break@loop
                                                 } else {
@@ -432,6 +465,7 @@ class MainActivity : AppCompatActivity(),
                                                     vTicketName = transaction.ticketName.toString()
                                                     vEventName = transaction.tEventName.toString()
                                                     vApproved = count.toString()
+                                                    transaction.outCount.increment(1)
                                                     message = "Ticket berhasil, Silahkan Keluar"
                                                     break@loop
                                                 }
@@ -457,7 +491,7 @@ class MainActivity : AppCompatActivity(),
                 EventNameSub.text = vEventName
                 TicketNameSub.text = vTicketName
             }
-            scannedResultAlert(message, failed)
+            scannedResultAlert(message, failed, used)
             ProgressBar.visibility = View.GONE
         }, {
             toast(it.toString())
@@ -482,11 +516,16 @@ class MainActivity : AppCompatActivity(),
         BarcodeEdtxt.setText("")
     }
 
-    private fun scannedResultAlert(message: String, failed: Boolean) {
+    private fun scannedResultAlert(message: String, failed: Boolean, used: Boolean) {
         if (failed) {
             Toasty.error(this, message).show()
         } else {
-            Toasty.success(this, message).show()
+            if (used) {
+                Toasty.info(this, message).show()
+            }
+            else {
+                Toasty.success(this, message).show()
+            }
         }
     }
 
@@ -500,35 +539,22 @@ class MainActivity : AppCompatActivity(),
     }
 
     private fun exportRealmToJson() {
-        val transaction = realm?.where<Transaction>()?.findAll()
-        val dataArray = JSONArray()
-        val dataObj = JSONObject()
-        transaction?.forEach { tran ->
-            dataObj.put("famocoId", tran.famocoId)
-            dataObj.put("famocoName", tran.famocoName)
-            dataObj.put("tEventName", tran.tEventName)
-            dataObj.put("ticketName", tran.ticketName)
-            dataObj.put("barcode", tran.barcode)
-            dataObj.put("inCount", tran.inCount)
-            dataObj.put("outCount", tran.outCount)
-            dataObj.put("lastIn", tran.lastIn)
-            dataObj.put("lastOut", tran.lastOut)
-            dataObj.put("status", tran.inside)
-            dataArray.put(dataObj)
+        val history = realm?.where<History>()?.findAll()
+        var i = 0
+        history?.forEach { v ->
+            try {
+                val root = File(Environment.getExternalStorageDirectory(), "exported_transaction")
+                if (!root.exists()) root.mkdirs()
+                i++
+                val json = File(root, String.format(v.device_name+"-"+i+"-"+"-"+v.created_at+".json"))
+                val writer = FileWriter(json)
+                writer.append(v.toString())
+                writer.flush()
+                writer.close()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
-
-        try {
-            val root = File(Environment.getExternalStorageDirectory(), "exported_transaction")
-            if (!root.exists()) root.mkdirs()
-            val json = File(root, "transaction.json")
-            val writer = FileWriter(json)
-            writer.append(dataArray.toString())
-            writer.flush()
-            writer.close()
-            Toasty.info(this, "Successfully exported to JSON").show()
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
+        Toasty.info(this, "Successfully exported to JSON").show()
     }
  }
