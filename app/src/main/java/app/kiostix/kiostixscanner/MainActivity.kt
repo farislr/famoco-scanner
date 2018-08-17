@@ -521,7 +521,7 @@ class MainActivity : AppCompatActivity(),
             Toasty.error(this, message).show()
         } else {
             if (used) {
-                Toasty.info(this, message).show()
+                Toasty.error(this, message).show()
             }
             else {
                 Toasty.success(this, message).show()
