@@ -1,11 +1,18 @@
 package app.kiostix.kiostixscanner
 
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.nfc.NdefMessage
+import android.nfc.NfcAdapter
+import android.nfc.Tag
+import android.nfc.tech.Ndef
 import android.os.Bundle
 import android.os.Environment
+import android.os.Parcelable
 import android.os.Vibrator
 import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -53,7 +60,9 @@ class MainActivity : AppCompatActivity(),
 
     private val realm: Realm? = Realm.getDefaultInstance()
     private val apiClient = ApiClient()
-
+    private var nfcAdapter : NfcAdapter? = null
+    private var nfcPendingIntent: PendingIntent? = null
+    private val KEY_LOG_TEXT = "logText"
     var PARAM_NUM = 765
     var PARAM_VAL1 = 0
     var PARAM_BUM_TIMEOUT: Int = LASER_ON_PRIM.toInt()
@@ -96,6 +105,31 @@ class MainActivity : AppCompatActivity(),
         vibrate = this.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
         val getTicket = realm?.where<Ticket>()?.findAll()
+        val device = realm?.where<Device>()?.findFirst()
+
+        if (device != null) {
+            FamocoID.text = device.deviceName
+        }
+
+        nfcAdapter = NfcAdapter.getDefaultAdapter(this)
+
+        if (nfcAdapter == null) {
+            // Stop here, we definitely need NFC
+            Toast.makeText(this, "This device doesn't support NFC.", Toast.LENGTH_LONG).show()
+            finish()
+            return
+
+        }
+
+        if (!nfcAdapter!!.isEnabled) {
+            toast("NFC is disabled.")
+        } else {
+            toast("NFC Enabled")
+        }
+
+        nfcPendingIntent = PendingIntent.getActivity(this, 0,
+                Intent(this, javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0)
+
         if (getTicket!!.size > 0) {
             SyncLayout.visibility = View.GONE
             ScanLayout.visibility = View.VISIBLE
@@ -176,11 +210,21 @@ class MainActivity : AppCompatActivity(),
             clearText()
         }
         initDeviceId()
+        if (intent != null) {
+            // Check if the app was started via an NDEF intent
+            logMessage("Found intent in onCreate", intent.action.toString())
+            processIntent(intent)
+        }
     }
 
     override fun onStart() {
         super.onStart()
         initBarcode()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        nfcAdapter?.enableForegroundDispatch(this, nfcPendingIntent, null, null);
     }
 
     private fun initBarcode() {
@@ -194,14 +238,16 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onStop() {
-        super.onStop()
         releaseBarcode()
+        super.onStop()
     }
 
     override fun onPause() {
-        super.onPause()
         releaseBarcode()
+        nfcAdapter?.disableForegroundDispatch(this);
+        super.onPause()
     }
+
 
     private fun releaseBarcode() {
         bcr?.setDecodeCallback(null)
@@ -227,6 +273,14 @@ class MainActivity : AppCompatActivity(),
         toLoginActivity.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
         toLoginActivity.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
         startActivity(toLoginActivity)
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        logMessage("Found intent in onNewIntent", intent?.action.toString())
+        // If we got an intent while the app is running, also check if it's a new NDEF message
+        // that was discovered
+        if (intent != null) processIntent(intent)
     }
 
     private fun initDeviceId() {
@@ -266,6 +320,76 @@ class MainActivity : AppCompatActivity(),
             }
         }
         queue.add(getDeviceId)
+    }
+
+    private fun processIntent(checkIntent: Intent) {
+        // Check if intent has the action of a discovered NFC tag
+        // with NDEF formatted contents
+        if (checkIntent.action == NfcAdapter.ACTION_NDEF_DISCOVERED) {
+            logMessage("New NDEF intent", checkIntent.toString())
+
+            // Retrieve the raw NDEF message from the tag
+            val rawMessages = checkIntent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES)
+            logMessage("Raw messages", rawMessages.size.toString())
+
+            // Complete variant: parse NDEF messages
+            if (rawMessages != null) {
+                val messages = arrayOfNulls<NdefMessage?>(rawMessages.size)// Array<NdefMessage>(rawMessages.size, {})
+                for (i in rawMessages.indices) {
+                    messages[i] = rawMessages[i] as NdefMessage;
+                }
+                // Process the messages array.
+                processNdefMessages(messages)
+            }
+
+            // Simple variant: assume we have 1x URI record
+            //if (rawMessages != null && rawMessages.isNotEmpty()) {
+            //    val ndefMsg = rawMessages[0] as NdefMessage
+            //    if (ndefMsg.records != null && ndefMsg.records.isNotEmpty()) {
+            //        val ndefRecord = ndefMsg.records[0]
+            //        if (ndefRecord.toUri() != null) {
+            //            logMessage("URI detected", ndefRecord.toUri().toString())
+            //        } else {
+            //            // Other NFC Tags
+            //            logMessage("Payload", ndefRecord.payload.contentToString())
+            //        }
+            //    }
+            //}
+
+        }
+    }
+
+    private fun processNdefMessages(ndefMessages: Array<NdefMessage?>) {
+        // Go through all NDEF messages found on the NFC tag
+        for (curMsg in ndefMessages) {
+            if (curMsg != null) {
+                // Print generic information about the NDEF message
+                logMessage("Message", curMsg.toString())
+                // The NDEF message usually contains 1+ records - print the number of recoreds
+                logMessage("Records", curMsg.records.size.toString())
+
+                // Loop through all the records contained in the message
+                for (curRecord in curMsg.records) {
+                    if (curRecord.toUri() != null) {
+                        // URI NDEF Tag
+                        logMessage("- URI", curRecord.toUri().toString())
+                    } else {
+                        // Other NDEF Tags - simply print the payload
+                        logMessage("- Contents", curRecord.payload.contentToString())
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle?) {
+        outState?.putCharSequence(KEY_LOG_TEXT, "log")
+        super.onSaveInstanceState(outState)
+    }
+
+    private fun logMessage(header: String, text: String?) {
+        toast(header + text)
+//        scrollDown()
     }
 
     private fun downloadFile(txtLink: Any): String? {
@@ -504,9 +628,6 @@ class MainActivity : AppCompatActivity(),
         mode = Mode.SCANNING
     }
 
-    /**
-     * 3. Stop a barcode scan.
-     */
     private fun stopScan() {
         bcr?.stopDecode()
         mode = Mode.IDLE
