@@ -50,6 +50,7 @@ import java.io.FileWriter
 import java.io.InputStreamReader
 import java.lang.Exception
 import java.net.URL
+import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -212,7 +213,7 @@ class MainActivity : AppCompatActivity(),
         initDeviceId()
         if (intent != null) {
             // Check if the app was started via an NDEF intent
-            logMessage("Found intent in onCreate", intent.action.toString())
+//            logMessage("Found intent in onCreate", intent.action.toString())
             processIntent(intent)
         }
     }
@@ -277,7 +278,7 @@ class MainActivity : AppCompatActivity(),
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        logMessage("Found intent in onNewIntent", intent?.action.toString())
+//        logMessage("Found intent in onNewIntent", intent?.action.toString())
         // If we got an intent while the app is running, also check if it's a new NDEF message
         // that was discovered
         if (intent != null) processIntent(intent)
@@ -326,11 +327,11 @@ class MainActivity : AppCompatActivity(),
         // Check if intent has the action of a discovered NFC tag
         // with NDEF formatted contents
         if (checkIntent.action == NfcAdapter.ACTION_NDEF_DISCOVERED) {
-            logMessage("New NDEF intent", checkIntent.toString())
+//            logMessage("New NDEF intent", checkIntent.toString())
 
             // Retrieve the raw NDEF message from the tag
             val rawMessages = checkIntent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES)
-            logMessage("Raw messages", rawMessages.size.toString())
+//            logMessage("Raw messages", rawMessages.size.toString())
 
             // Complete variant: parse NDEF messages
             if (rawMessages != null) {
@@ -364,18 +365,21 @@ class MainActivity : AppCompatActivity(),
         for (curMsg in ndefMessages) {
             if (curMsg != null) {
                 // Print generic information about the NDEF message
-                logMessage("Message", curMsg.toString())
+//                logMessage("Message", curMsg.toString())
                 // The NDEF message usually contains 1+ records - print the number of recoreds
-                logMessage("Records", curMsg.records.size.toString())
+//                logMessage("Records", curMsg.records.size.toString())
 
                 // Loop through all the records contained in the message
                 for (curRecord in curMsg.records) {
                     if (curRecord.toUri() != null) {
                         // URI NDEF Tag
-                        logMessage("- URI", curRecord.toUri().toString())
+//                        logMessage("- URI", curRecord.toUri().toString())
                     } else {
                         // Other NDEF Tags - simply print the payload
-                        logMessage("- Contents", curRecord.payload.contentToString())
+//                        logMessage("- Contents", curRecord.payload.contentToString())
+//                        logMessage("msg : ", String(curRecord.payload, Charsets.US_ASCII))
+                        val payloadText = String(curRecord.payload, Charsets.US_ASCII)
+                        handleScanResult(payloadText)
                     }
                 }
             }
