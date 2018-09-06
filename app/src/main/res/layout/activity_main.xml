@@ -19,7 +19,9 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <include layout="@layout/sync_action_layout" android:id="@+id/SyncLayout"/>
+    <include
+        android:id="@+id/SyncLayout"
+        layout="@layout/sync_action_layout" />
 
     <include layout="@layout/scanning_layout" android:id="@+id/ScanLayout" android:visibility="gone"/>
 

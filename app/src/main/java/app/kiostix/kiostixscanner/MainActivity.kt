@@ -378,7 +378,7 @@ class MainActivity : AppCompatActivity(),
                         // Other NDEF Tags - simply print the payload
 //                        logMessage("- Contents", curRecord.payload.contentToString())
 //                        logMessage("msg : ", String(curRecord.payload, Charsets.US_ASCII))
-                        val payloadText = String(curRecord.payload, Charsets.US_ASCII)
+                        val payloadText = String(curRecord.payload, Charsets.US_ASCII).substring(3)
                         handleScanResult(payloadText)
                     }
                 }
