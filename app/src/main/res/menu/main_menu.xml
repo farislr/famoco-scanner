@@ -10,4 +10,7 @@
     <item
         android:id="@+id/ExportJsonItem"
         android:title="Export to JSON" />
+    <item
+        android:id="@+id/SendEmail"
+        android:title="Send Email" />
 </menu>
