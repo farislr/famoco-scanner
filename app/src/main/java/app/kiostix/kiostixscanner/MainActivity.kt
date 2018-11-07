@@ -37,6 +37,7 @@ import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.scanning_layout.*
 import kotlinx.android.synthetic.main.sync_action_layout.*
 import org.jetbrains.anko.doAsync
+import org.jetbrains.anko.email
 import org.jetbrains.anko.toast
 import org.jetbrains.anko.uiThread
 import org.json.JSONArray
@@ -48,9 +49,9 @@ import java.io.InputStreamReader
 import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.*
-import javax.mail.Authenticator
-import javax.mail.PasswordAuthentication
-import javax.mail.Session
+import javax.mail.*
+import javax.mail.internet.InternetAddress
+import javax.mail.internet.MimeMessage
 
 class MainActivity : AppCompatActivity(),
         AdapterView.OnItemSelectedListener,
@@ -62,6 +63,7 @@ class MainActivity : AppCompatActivity(),
     private var nfcAdapter : NfcAdapter? = null
     private var nfcPendingIntent: PendingIntent? = null
     private val KEY_LOG_TEXT = "logText"
+    val email = EmailAuth()
     var PARAM_NUM = 765
     var PARAM_VAL1 = 0
     var PARAM_BUM_TIMEOUT: Int = LASER_ON_PRIM.toInt()
@@ -223,7 +225,7 @@ class MainActivity : AppCompatActivity(),
 
     override fun onResume() {
         super.onResume()
-        nfcAdapter?.enableForegroundDispatch(this, nfcPendingIntent, null, null);
+        nfcAdapter?.enableForegroundDispatch(this, nfcPendingIntent, null, null)
     }
 
     private fun initBarcode() {
@@ -243,7 +245,7 @@ class MainActivity : AppCompatActivity(),
 
     override fun onPause() {
         releaseBarcode()
-        nfcAdapter?.disableForegroundDispatch(this);
+        nfcAdapter?.disableForegroundDispatch(this)
         super.onPause()
     }
 
@@ -335,7 +337,7 @@ class MainActivity : AppCompatActivity(),
             if (rawMessages != null) {
                 val messages = arrayOfNulls<NdefMessage?>(rawMessages.size)// Array<NdefMessage>(rawMessages.size, {})
                 for (i in rawMessages.indices) {
-                    messages[i] = rawMessages[i] as NdefMessage;
+                    messages[i] = rawMessages[i] as NdefMessage
                 }
                 // Process the messages array.
                 processNdefMessages(messages)
@@ -455,6 +457,9 @@ class MainActivity : AppCompatActivity(),
                 if (count != 0L) {
                     exportRealmToJson()
                 }
+            }
+            R.id.SendEmail -> {
+                sendEmail()
             }
         }
         return super.onOptionsItemSelected(item)
@@ -682,6 +687,30 @@ class MainActivity : AppCompatActivity(),
     }
 
     private fun sendEmail() {
-        
+        val props = Properties()
+        props["mail.smtp.host"] = "true"
+        props["mail.smtp.starttls.enable"] = "true"
+        props["mail.smtp.host"] = "smtp.gmail.com"
+        props["mail.smtp.port"] = "587"
+        props["mail.smtp.auth"] = "true"
+
+        val session = Session.getInstance(props, object : javax.mail.Authenticator() {
+            override fun getPasswordAuthentication(): PasswordAuthentication {
+                return PasswordAuthentication(email.email, email.pass)
+            }
+        })
+
+        try {
+            val msg = MimeMessage(session)
+            val to = "lrfaris24@gmail.com"
+            msg.addRecipient(Message.RecipientType.TO, InternetAddress(to))
+            msg.subject = "test subject"
+//            msg.setContent("test body", "text/html")
+            msg.setText("test body")
+            Transport.send(msg)
+            toast("send success")
+        } catch (mex: MessagingException) {
+            toast("Failed to send email \n$mex")
+        }
     }
  }
