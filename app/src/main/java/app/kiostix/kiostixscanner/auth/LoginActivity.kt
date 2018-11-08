@@ -28,7 +28,7 @@ class LoginActivity : AppCompatActivity() {
         setContentView(R.layout.activity_login)
 
         val body = JSONObject()
-        body.put("email", EmailField.text)
+        body.put("emailAuth", EmailField.text)
         body.put("password", PassField.text)
 
         val realm = Realm.getDefaultInstance()
@@ -48,7 +48,7 @@ class LoginActivity : AppCompatActivity() {
                                 val user = realm.createObject<User>()
                                 val data = response?.getJSONObject("data")
                                 user.fullname = data?.getString("fullname")
-                                user.email = data?.getString("email")
+                                user.email = data?.getString("emailAuth")
                                 user.token = data?.getString("token")
                             }
                             val toMainActivity = Intent(this, MainActivity::class.java)

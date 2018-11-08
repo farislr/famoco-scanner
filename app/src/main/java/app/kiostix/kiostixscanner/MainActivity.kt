@@ -19,6 +19,7 @@ import app.kiostix.kiostixscanner.adapter.DeviceIdAdapter
 import app.kiostix.kiostixscanner.api.ApiClient
 import app.kiostix.kiostixscanner.auth.EmailAuth
 import app.kiostix.kiostixscanner.auth.LoginActivity
+import app.kiostix.kiostixscanner.dialogs.AnyDialogs
 import app.kiostix.kiostixscanner.model.*
 import com.android.volley.AuthFailureError
 import com.android.volley.Request
@@ -28,6 +29,8 @@ import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
 import com.zebra.adc.decoder.BarCodeReader
 import com.zebra.adc.decoder.BarCodeReader.ParamNum.LASER_ON_PRIM
+import de.siegmar.fastcsv.writer.CsvAppender
+import de.siegmar.fastcsv.writer.CsvWriter
 import es.dmoral.toasty.Toasty
 import io.realm.Realm
 import io.realm.kotlin.createObject
@@ -36,22 +39,21 @@ import io.realm.kotlin.where
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.scanning_layout.*
 import kotlinx.android.synthetic.main.sync_action_layout.*
-import org.jetbrains.anko.doAsync
-import org.jetbrains.anko.email
-import org.jetbrains.anko.toast
-import org.jetbrains.anko.uiThread
+import org.jetbrains.anko.*
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.File
-import java.io.FileWriter
-import java.io.InputStreamReader
+import java.io.*
 import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.*
+import javax.activation.DataHandler
+import javax.activation.FileDataSource
 import javax.mail.*
 import javax.mail.internet.InternetAddress
+import javax.mail.internet.MimeBodyPart
 import javax.mail.internet.MimeMessage
+import javax.mail.internet.MimeMultipart
+import kotlin.collections.ArrayList
 
 class MainActivity : AppCompatActivity(),
         AdapterView.OnItemSelectedListener,
@@ -63,7 +65,7 @@ class MainActivity : AppCompatActivity(),
     private var nfcAdapter : NfcAdapter? = null
     private var nfcPendingIntent: PendingIntent? = null
     private val KEY_LOG_TEXT = "logText"
-    val email = EmailAuth()
+    val emailAuth = EmailAuth()
     var PARAM_NUM = 765
     var PARAM_VAL1 = 0
     var PARAM_BUM_TIMEOUT: Int = LASER_ON_PRIM.toInt()
@@ -217,6 +219,8 @@ class MainActivity : AppCompatActivity(),
             processIntent(intent)
         }
     }
+
+    operator fun JSONArray.iterator(): Iterator<JSONObject> = (0 until length()).asSequence().map { get(it) as JSONObject }.iterator()
 
     override fun onStart() {
         super.onStart()
@@ -379,6 +383,7 @@ class MainActivity : AppCompatActivity(),
 //                        logMessage("- Contents", curRecord.payload.contentToString())
 //                        logMessage("msg : ", String(curRecord.payload, Charsets.US_ASCII))
                         val payloadText = String(curRecord.payload, Charsets.US_ASCII).substring(3)
+                        initBarcode()
                         handleScanResult(payloadText)
                     }
                 }
@@ -431,10 +436,10 @@ class MainActivity : AppCompatActivity(),
                             jsonData.put("tEventName", v.tEventName)
                             jsonData.put("ticketName", v.ticketName)
                             jsonData.put("barcode", v.barcode)
-                            jsonData.put("inCount", v.inCount)
-                            jsonData.put("outCount", v.outCount)
-                            jsonData.put("lastIn", v.lastIn)
-                            jsonData.put("lastOut", v.lastOut)
+                            jsonData.put("inCount", v.inCount.get())
+                            jsonData.put("outCount", v.outCount.get())
+                            jsonData.put("lastIn", v.lastIn.toString())
+                            jsonData.put("lastOut", v.lastOut.toString())
                             jsonData.put("inside", v.inside)
                             jsonArray.put(jsonData)
                         }
@@ -459,7 +464,8 @@ class MainActivity : AppCompatActivity(),
                 }
             }
             R.id.SendEmail -> {
-                sendEmail()
+                AnyDialogs().show(supportFragmentManager, "Send email dialog")
+//                sendEmail()
             }
         }
         return super.onOptionsItemSelected(item)
@@ -686,17 +692,11 @@ class MainActivity : AppCompatActivity(),
         Toasty.info(this, "Successfully exported to JSON").show()
     }
 
-    private fun sendEmail() {
-        val props = Properties()
-        props["mail.smtp.host"] = "true"
-        props["mail.smtp.starttls.enable"] = "true"
-        props["mail.smtp.host"] = "smtp.gmail.com"
-        props["mail.smtp.port"] = "587"
-        props["mail.smtp.auth"] = "true"
-
-        val session = Session.getInstance(props, object : javax.mail.Authenticator() {
+    fun sendEmail() {
+        ProgressBar.visibility = View.VISIBLE
+        val session = Session.getInstance(emailAuth.init(), object : Authenticator() {
             override fun getPasswordAuthentication(): PasswordAuthentication {
-                return PasswordAuthentication(email.email, email.pass)
+                return PasswordAuthentication(emailAuth.email, emailAuth.pass)
             }
         })
 
@@ -704,11 +704,79 @@ class MainActivity : AppCompatActivity(),
             val msg = MimeMessage(session)
             val to = "lrfaris24@gmail.com"
             msg.addRecipient(Message.RecipientType.TO, InternetAddress(to))
-            msg.subject = "test subject"
-//            msg.setContent("test body", "text/html")
-            msg.setText("test body")
-            Transport.send(msg)
-            toast("send success")
+            msg.subject = "KiosTix Famoco Device"
+            val multiPart = MimeMultipart()
+            val body = MimeBodyPart()
+            body.setText("Latest transaction report")
+            multiPart.addBodyPart(body)
+            val history = realm?.where<History>()?.findAll()
+            var i = 0
+            val root = File(Environment.getExternalStorageDirectory(), "exported_transaction")
+            history?.forEach { v ->
+                val attach = MimeBodyPart()
+                i++
+                val filename = String.format(v.device_name+"-"+i+"-"+"-"+v.created_at+".csv")
+                try {
+                    if (!root.exists()) root.mkdirs()
+                    val json = File(root, filename)
+                    val csv = CsvWriter()
+//                    csv.setFieldSeparator(',')
+//                    csv.setTextDelimiter('\"')
+//                    csv.setLineDelimiter("\r\n".toCharArray())
+//                    csv.setAlwaysDelimitText(true)
+                    try {
+                        val csvAppender: CsvAppender = csv.append(FileWriter(json))
+                        csvAppender.appendLine(
+                                "famocoId",
+                                "famocoName",
+                                "tEventName",
+                                "ticketName",
+                                "barcode",
+                                "inCount",
+                                "outCount",
+                                "lastIn",
+                                "lastOut",
+                                "inside?"
+                        )
+                        val transactions = JSONArray(v.transaction_data)
+                        for (item in transactions) {
+                            csvAppender.appendLine(
+                                    item["famocoId"].toString(),
+                                    item["famocoName"].toString(),
+                                    item["tEventName"].toString(),
+                                    item["ticketName"].toString(),
+                                    item["barcode"].toString(),
+                                    item["inCount"].toString(),
+                                    item["outCount"].toString(),
+                                    item["lastIn"].toString(),
+                                    item["lastOut"].toString(),
+                                    item["inside"].toString()
+                            )
+                        }
+                        csvAppender.flush()
+                        csvAppender.close()
+                    } catch (e: IOException) {
+                        e.printStackTrace()
+                        toast(e.printStackTrace().toString())
+                    }
+                    val dataSource = FileDataSource(json)
+                    attach.dataHandler = DataHandler(dataSource)
+                    attach.fileName = filename
+                    multiPart.addBodyPart(attach)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+            msg.setContent(multiPart)
+//            msg.setText("test body")
+
+            doAsync {
+                Transport.send(msg)
+                uiThread {
+                    ProgressBar.visibility = View.GONE
+                    toast("send email success")
+                }
+            }
         } catch (mex: MessagingException) {
             toast("Failed to send email \n$mex")
         }

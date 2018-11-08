@@ -6,7 +6,7 @@
         android:title="Reset" />
     <item
         android:id="@+id/ExportItem"
-        android:title="Export" />
+        android:title="Export to Realm" />
     <item
         android:id="@+id/ExportJsonItem"
         android:title="Export to JSON" />
