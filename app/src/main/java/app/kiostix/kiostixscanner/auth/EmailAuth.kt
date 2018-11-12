@@ -4,10 +4,8 @@ import java.util.*
 
 
 open class EmailAuth {
-//    val emailAuth = "dev@kios.io"
-//    val pass = "DevPejaten5"
-    val email = "support@ultraklin.com"
-    val pass = "\$LINI->P@ssw0rd=Ok"
+    val email = "dev@kiostix.com"
+    val pass = "DevPejaten5"
 
     fun init(): Properties {
         val props = Properties()

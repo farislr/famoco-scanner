@@ -8,6 +8,7 @@ import android.nfc.NfcAdapter
 import android.os.Bundle
 import android.os.Environment
 import android.os.Vibrator
+import android.support.v4.app.DialogFragment
 import android.support.v7.app.AppCompatActivity
 import android.view.Menu
 import android.view.MenuItem
@@ -39,7 +40,9 @@ import io.realm.kotlin.where
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.scanning_layout.*
 import kotlinx.android.synthetic.main.sync_action_layout.*
-import org.jetbrains.anko.*
+import org.jetbrains.anko.doAsync
+import org.jetbrains.anko.toast
+import org.jetbrains.anko.uiThread
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.*
@@ -58,7 +61,8 @@ import kotlin.collections.ArrayList
 class MainActivity : AppCompatActivity(),
         AdapterView.OnItemSelectedListener,
         BarCodeReader.DecodeCallback,
-        BarCodeReader.ErrorCallback {
+        BarCodeReader.ErrorCallback,
+        AnyDialogs.EmailDialogListener {
 
     private val realm: Realm? = Realm.getDefaultInstance()
     private val apiClient = ApiClient()
@@ -146,9 +150,51 @@ class MainActivity : AppCompatActivity(),
             TicketNameSub.text = lastTransaction?.ticketName
         }
 
+        var useData: Int = UrlRb.id
+        GetDataChoiceRg.setOnCheckedChangeListener { group, checkedId ->
+            useData = checkedId
+            when (group.checkedRadioButtonId) {
+                UrlRb.id -> {
+                    UrlCard.visibility = View.VISIBLE
+                    DeviceCard.visibility = View.GONE
+                }
+                DeviceRb.id -> {
+                    UrlCard.visibility = View.GONE
+                    DeviceCard.visibility = View.VISIBLE
+                }
+            }
+        }
+
         DownloadCard.setOnClickListener {
             ProgressBar.visibility = View.VISIBLE
             val param = JSONObject()
+            if (useData == UrlRb.id) {
+                doAsync {
+                    var exception: Exception? = null
+                    var result: String? = null
+                    try {
+                        result = downloadFile(UrlInput.text.toString())
+                    } catch (e: Exception) {
+                        exception = e
+                    }
+                    uiThread { _ ->
+                        if (exception != null) {
+//                                    toast("Error Downloading data, please try again")
+                            toast(exception.toString())
+                        } else {
+                            realm?.executeTransactionAsync { r ->
+                                r.createAllFromJson(Ticket::class.java, result!!)
+                            }
+                            toast("Data saved")
+                            SyncLayout.visibility = View.GONE
+                            ScanLayout.visibility = View.VISIBLE
+                            ProgressBar.visibility = View.GONE
+                        }
+                    }
+                }
+                ProgressBar.visibility = View.GONE
+                return@setOnClickListener
+            }
             realm?.executeTransaction {r ->
                 val device = r.where<Device>().findAll()
                 param.put("device_id", device[0]?.deviceId)
@@ -692,19 +738,23 @@ class MainActivity : AppCompatActivity(),
         Toasty.info(this, "Successfully exported to JSON").show()
     }
 
-    fun sendEmail() {
+    private fun sendEmail(email: String) {
         ProgressBar.visibility = View.VISIBLE
         val session = Session.getInstance(emailAuth.init(), object : Authenticator() {
             override fun getPasswordAuthentication(): PasswordAuthentication {
                 return PasswordAuthentication(emailAuth.email, emailAuth.pass)
             }
         })
-
+        if (email.isBlank()) {
+            ProgressBar.visibility = View.GONE
+            toast("Email is blank")
+            return
+        }
         try {
             val msg = MimeMessage(session)
-            val to = "lrfaris24@gmail.com"
+            val to = email
             msg.addRecipient(Message.RecipientType.TO, InternetAddress(to))
-            msg.subject = "KiosTix Famoco Device"
+            msg.subject = "KiosTix Famoco Device Report"
             val multiPart = MimeMultipart()
             val body = MimeBodyPart()
             body.setText("Latest transaction report")
@@ -720,10 +770,6 @@ class MainActivity : AppCompatActivity(),
                     if (!root.exists()) root.mkdirs()
                     val json = File(root, filename)
                     val csv = CsvWriter()
-//                    csv.setFieldSeparator(',')
-//                    csv.setTextDelimiter('\"')
-//                    csv.setLineDelimiter("\r\n".toCharArray())
-//                    csv.setAlwaysDelimitText(true)
                     try {
                         val csvAppender: CsvAppender = csv.append(FileWriter(json))
                         csvAppender.appendLine(
@@ -771,14 +817,29 @@ class MainActivity : AppCompatActivity(),
 //            msg.setText("test body")
 
             doAsync {
-                Transport.send(msg)
+                var catch: MessagingException? = null
+                try {
+                    Transport.send(msg)
+                } catch (mex: MessagingException) {
+                    catch = mex
+                }
                 uiThread {
+                    if (catch != null) {
+                        ProgressBar.visibility = View.GONE
+                        toast(catch.message.toString())
+                        return@uiThread
+                    }
                     ProgressBar.visibility = View.GONE
-                    toast("send email success")
+                    toast("Send email success")
                 }
             }
         } catch (mex: MessagingException) {
+            ProgressBar.visibility = View.GONE
             toast("Failed to send email \n$mex")
         }
+    }
+
+    override fun onSendClick(dialog: DialogFragment, emailInput: String) {
+        sendEmail(emailInput)
     }
  }
