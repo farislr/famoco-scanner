@@ -3,13 +3,18 @@
 
     <item
         android:id="@+id/ResetItem"
-        android:title="Reset" />
+        android:title="Closing" />
+    <item
+        android:id="@+id/ClearHistory"
+        android:title="Clear History" />
     <item
         android:id="@+id/ExportItem"
-        android:title="Export to Realm" />
+        android:title="Export to Realm"
+        android:visible="false" />
     <item
         android:id="@+id/ExportJsonItem"
-        android:title="Export to JSON" />
+        android:title="Export to JSON"
+        android:visible="false" />
     <item
         android:id="@+id/SendEmail"
         android:title="Send Email" />

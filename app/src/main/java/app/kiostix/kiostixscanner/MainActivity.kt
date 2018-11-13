@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.os.Vibrator
 import android.support.v4.app.DialogFragment
+import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
 import android.view.Menu
 import android.view.MenuItem
@@ -494,8 +495,34 @@ class MainActivity : AppCompatActivity(),
                     it.delete<Ticket>()
                     it.delete<Transaction>()
                 }
+                val alertDialog = AlertDialog.Builder(this)
+                alertDialog.setMessage("Data sent to history")
+                        .setPositiveButton("OK") { dialog, id ->
+                            dialog.cancel()
+                        }
+                alertDialog.create()
+                alertDialog.show()
                 SyncLayout.visibility = View.VISIBLE
                 ScanLayout.visibility = View.GONE
+            }
+            R.id.ClearHistory -> {
+                val alertDialog = AlertDialog.Builder(this)
+                alertDialog.setMessage("Are you sure ? this will clear all data")
+                        .setPositiveButton("Yes") { dialog, id ->
+                            realm?.executeTransaction {
+                                it.delete<History>()
+                                it.delete<Ticket>()
+                                it.delete<Transaction>()
+                            }
+                            SyncLayout.visibility = View.VISIBLE
+                            ScanLayout.visibility = View.GONE
+                            toast("All data cleared")
+                        }
+                        .setNegativeButton("No") { dialog, id ->
+                            dialog.cancel()
+                        }
+                alertDialog.create()
+                alertDialog.show()
             }
             R.id.ExportItem -> {
                 val count = realm?.where<History>()?.count()
