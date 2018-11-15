@@ -124,7 +124,7 @@ class MainActivity : AppCompatActivity(),
         if (nfcAdapter == null) {
             // Stop here, we definitely need NFC
             Toast.makeText(this, "This device doesn't support NFC.", Toast.LENGTH_LONG).show()
-            finish()
+//            finish()
             return
 
         }
@@ -147,7 +147,7 @@ class MainActivity : AppCompatActivity(),
         if (count != 0L) {
             val lastTransaction = realm?.where<Transaction>()?.findAll()?.last()
             ApprovedSub.text = count.toString()
-            EventNameSub.text = lastTransaction?.tEventName
+            ScheduleNameSub.text = lastTransaction?.scheduleName
             TicketNameSub.text = lastTransaction?.ticketName
         }
 
@@ -173,20 +173,27 @@ class MainActivity : AppCompatActivity(),
                 doAsync {
                     var exception: Exception? = null
                     var result: String? = null
+                    var data: JSONObject? = null
                     try {
                         result = downloadFile(UrlInput.text.toString())
+                        data = JSONArray(result).getJSONObject(0)
                     } catch (e: Exception) {
                         exception = e
                     }
                     uiThread { _ ->
                         if (exception != null) {
-//                                    toast("Error Downloading data, please try again")
+//                              toast("Error Downloading data, please try again")
+                            ProgressBar.visibility = View.GONE
                             toast(exception.toString())
                         } else {
                             realm?.executeTransactionAsync { r ->
                                 r.createAllFromJson(Ticket::class.java, result!!)
+                                r.delete<Device>()
+                                val device = r.createObject<Device>()
+                                device.deviceId = "ManualUrl"
+                                device.deviceName = data?.get("event_name") as String
+                                FamocoID.text = device.deviceName
                             }
-                            toast("Data saved")
                             SyncLayout.visibility = View.GONE
                             ScanLayout.visibility = View.VISIBLE
                             ProgressBar.visibility = View.GONE
@@ -295,7 +302,7 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onPause() {
-        releaseBarcode()
+//        releaseBarcode()
         nfcAdapter?.disableForegroundDispatch(this)
         super.onPause()
     }
@@ -560,10 +567,12 @@ class MainActivity : AppCompatActivity(),
     override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
         realm?.executeTransaction {
             it.delete<Device>()
-            val device = it.createObject<Device>()
-            device.deviceId = (parent?.selectedItem as DeviceIdSpinnerModel).deviceId
-            device.deviceName = (parent.selectedItem as DeviceIdSpinnerModel).deviceName
-            FamocoID.text = device.deviceName
+            if (DeviceRb.isChecked) {
+                val device = it.createObject<Device>()
+                device.deviceId = (parent?.selectedItem as DeviceIdSpinnerModel).deviceId
+                device.deviceName = (parent.selectedItem as DeviceIdSpinnerModel).deviceName
+                FamocoID.text = device.deviceName
+            }
         }
     }
 
@@ -599,6 +608,7 @@ class MainActivity : AppCompatActivity(),
         var failed = true
         var vTicketName = String()
         var vEventName = String()
+        var vScheduleName = String()
         var vApproved = String()
         var used = false
         realm?.executeTransactionAsync({ realm ->
@@ -607,6 +617,7 @@ class MainActivity : AppCompatActivity(),
                 val data = JSONArray(ticket[ii]?.schedule_data)
                 for (i in 0 until data.length()) {
                     val sArr = data.getJSONObject(i)
+                    val scheduleName = sArr["schedule_name"] as String
                     for (i1 in 0 until sArr.length()) {
                         val sObj = sArr.getJSONArray("ticket_data")
                         for (i2 in 0 until sObj.length()) {
@@ -649,6 +660,7 @@ class MainActivity : AppCompatActivity(),
                                                     transaction.famocoName = device[0]?.deviceName as String
                                                     transaction.tEventName = ticket[ii]?.event_name
                                                     transaction.ticketName = ticketName
+                                                    transaction.scheduleName = scheduleName
                                                     transaction.lastIn = formatDateTime.format(Date())
                                                     transaction.inCount.set(0)
                                                     transaction.outCount.set(0)
@@ -656,6 +668,7 @@ class MainActivity : AppCompatActivity(),
                                                     val count = realm.where<Transaction>().findAll().count()
                                                     vTicketName = transaction.ticketName.toString()
                                                     vEventName = transaction.tEventName.toString()
+                                                    vScheduleName = transaction.scheduleName.toString()
                                                     vApproved = count.toString()
                                                     transaction.inCount.increment(1)
                                                     message = "Ticket berhasil, Silahkan Masuk"
@@ -667,6 +680,7 @@ class MainActivity : AppCompatActivity(),
                                                     transaction.famocoName = device[0]?.deviceName as String
                                                     transaction.tEventName = ticket[ii]?.event_name
                                                     transaction.ticketName = ticketName
+                                                    transaction.scheduleName = scheduleName
                                                     transaction.lastIn = formatDateTime.format(Date())
                                                     transaction.inCount.set(0)
                                                     transaction.outCount.set(0)
@@ -674,6 +688,7 @@ class MainActivity : AppCompatActivity(),
                                                     val count = realm.where<Transaction>().findAll().count()
                                                     vTicketName = transaction.ticketName.toString()
                                                     vEventName = transaction.tEventName.toString()
+                                                    vScheduleName = transaction.scheduleName.toString()
                                                     vApproved = count.toString()
                                                     transaction.outCount.increment(1)
                                                     message = "Ticket berhasil, Silahkan Keluar"
@@ -698,7 +713,7 @@ class MainActivity : AppCompatActivity(),
         }, {
             if (!vApproved.isBlank()) {
                 ApprovedSub.text = vApproved
-                EventNameSub.text = vEventName
+                ScheduleNameSub.text = vScheduleName
                 TicketNameSub.text = vTicketName
             }
             scannedResultAlert(message, failed, used)
@@ -803,6 +818,7 @@ class MainActivity : AppCompatActivity(),
                                 "famocoId",
                                 "famocoName",
                                 "tEventName",
+                                "scheduleName",
                                 "ticketName",
                                 "barcode",
                                 "inCount",
@@ -817,6 +833,7 @@ class MainActivity : AppCompatActivity(),
                                     item["famocoId"].toString(),
                                     item["famocoName"].toString(),
                                     item["tEventName"].toString(),
+                                    item["scheduleName"].toString(),
                                     item["ticketName"].toString(),
                                     item["barcode"].toString(),
                                     item["inCount"].toString(),

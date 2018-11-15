@@ -15,6 +15,8 @@ open class Transaction: RealmObject() {
 
     var ticketName: String? = null
 
+    var scheduleName: String? = null
+
     @PrimaryKey @Index
     var barcode: String? = null
 

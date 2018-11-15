@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    >
+    android:layout_height="match_parent">
     <android.support.constraint.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
@@ -135,7 +132,7 @@
                     android:layout_marginStart="8dp"
                     android:layout_marginTop="24dp"
                     android:layout_marginEnd="32dp"
-                    android:text="Event Name"
+                    android:text="Schedule Event"
                     android:textSize="18sp"
                     app:layout_constraintEnd_toStartOf="@+id/ApprovedTitle"
                     app:layout_constraintHorizontal_chainStyle="spread"
@@ -143,7 +140,7 @@
                     app:layout_constraintTop_toBottomOf="@+id/FamocoID" />
 
                 <TextView
-                    android:id="@+id/EventNameSub"
+                    android:id="@+id/ScheduleNameSub"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
@@ -198,7 +195,7 @@
                     android:text="Ticket Name"
                     android:textSize="18sp"
                     app:layout_constraintStart_toStartOf="@+id/EventNameTitle"
-                    app:layout_constraintTop_toBottomOf="@+id/EventNameSub" />
+                    app:layout_constraintTop_toBottomOf="@+id/ScheduleNameSub" />
 
                 <TextView
                     android:id="@+id/TicketNameSub"
