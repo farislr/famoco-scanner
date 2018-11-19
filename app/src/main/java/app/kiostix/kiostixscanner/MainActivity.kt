@@ -489,6 +489,7 @@ class MainActivity : AppCompatActivity(),
                             jsonData.put("famocoName", v.famocoName)
                             jsonData.put("tEventName", v.tEventName)
                             jsonData.put("ticketName", v.ticketName)
+                            jsonData.put("scheduleName", v.scheduleName)
                             jsonData.put("barcode", v.barcode)
                             jsonData.put("inCount", v.inCount.get())
                             jsonData.put("outCount", v.outCount.get())
@@ -807,7 +808,7 @@ class MainActivity : AppCompatActivity(),
             history?.forEach { v ->
                 val attach = MimeBodyPart()
                 i++
-                val filename = String.format(v.device_name+"-"+i+"-"+"-"+v.created_at+".csv")
+                val filename = String.format(v.device_name+"-"+i+"-"+v.created_at+".csv")
                 try {
                     if (!root.exists()) root.mkdirs()
                     val json = File(root, filename)
