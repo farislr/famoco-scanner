@@ -3,6 +3,7 @@ package app.kiostix.kiostixscanner
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.wifi.WifiManager
 import android.nfc.NdefMessage
 import android.nfc.NfcAdapter
 import android.os.Bundle
@@ -35,6 +36,7 @@ import de.siegmar.fastcsv.writer.CsvAppender
 import de.siegmar.fastcsv.writer.CsvWriter
 import es.dmoral.toasty.Toasty
 import io.realm.Realm
+import io.realm.exceptions.RealmException
 import io.realm.kotlin.createObject
 import io.realm.kotlin.delete
 import io.realm.kotlin.where
@@ -58,6 +60,7 @@ import javax.mail.internet.MimeBodyPart
 import javax.mail.internet.MimeMessage
 import javax.mail.internet.MimeMultipart
 import kotlin.collections.ArrayList
+import kotlin.experimental.and
 
 class MainActivity : AppCompatActivity(),
         AdapterView.OnItemSelectedListener,
@@ -76,15 +79,15 @@ class MainActivity : AppCompatActivity(),
     var PARAM_BUM_TIMEOUT: Int = LASER_ON_PRIM.toInt()
     var PARAM_VAL_TIMEOUT: Int = 990
 
-    init {
-        try {
-            System.loadLibrary("IAL")
-            System.loadLibrary("SDL")
-            System.loadLibrary("barcodereader44")
-        } catch (e: Exception) {
-            toast(e.toString())
-        }
-    }
+//    init {
+//        try {
+//            System.loadLibrary("IAL")
+//            System.loadLibrary("SDL")
+//            System.loadLibrary("barcodereader44")
+//        } catch (e: Exception) {
+//            toast(e.toString())
+//        }
+//    }
 
     enum class Mode {
         UNAVAILABLE,
@@ -92,6 +95,7 @@ class MainActivity : AppCompatActivity(),
         SCANNING,
     }
 
+    private val hexArray = "0123456789ABCDEF".toCharArray()
     var mode: Any? = null
     private var bcr: BarCodeReader? = null
     private lateinit var vibrate: Vibrator
@@ -165,9 +169,12 @@ class MainActivity : AppCompatActivity(),
                 }
             }
         }
-
+        val manager: WifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         DownloadCard.setOnClickListener {
             ProgressBar.visibility = View.VISIBLE
+            ApprovedSub.text = ""
+            ScheduleNameSub.text = ""
+            TicketNameSub.text = ""
             val param = JSONObject()
             if (useData == UrlRb.id) {
                 doAsync {
@@ -186,17 +193,22 @@ class MainActivity : AppCompatActivity(),
                             ProgressBar.visibility = View.GONE
                             toast(exception.toString())
                         } else {
-                            realm?.executeTransactionAsync { r ->
-                                r.createAllFromJson(Ticket::class.java, result!!)
-                                r.delete<Device>()
-                                val device = r.createObject<Device>()
-                                device.deviceId = "ManualUrl"
-                                device.deviceName = data?.get("event_name") as String
-                                FamocoID.text = device.deviceName
+                            try {
+                                realm?.executeTransactionAsync { r ->
+                                    r.createAllFromJson(Ticket::class.java, result!!)
+                                    r.delete<Device>()
+                                    val device = r.createObject<Device>()
+                                    val macId = manager.connectionInfo.macAddress
+                                    device.deviceId = macId
+                                    device.deviceName = data?.get("event_name") as String
+                                    FamocoID.text = device.deviceName
+                                }
+                                SyncLayout.visibility = View.GONE
+                                ScanLayout.visibility = View.VISIBLE
+                                ProgressBar.visibility = View.GONE
+                            } catch (e: Exception) {
+                                toast(e.localizedMessage)
                             }
-                            SyncLayout.visibility = View.GONE
-                            ScanLayout.visibility = View.VISIBLE
-                            ProgressBar.visibility = View.GONE
                         }
                     }
                 }
@@ -388,33 +400,29 @@ class MainActivity : AppCompatActivity(),
 //            logMessage("New NDEF intent", checkIntent.toString())
 
             // Retrieve the raw NDEF message from the tag
-            val rawMessages = checkIntent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES)
-//            logMessage("Raw messages", rawMessages.size.toString())
 
-            // Complete variant: parse NDEF messages
-            if (rawMessages != null) {
-                val messages = arrayOfNulls<NdefMessage?>(rawMessages.size)// Array<NdefMessage>(rawMessages.size, {})
-                for (i in rawMessages.indices) {
-                    messages[i] = rawMessages[i] as NdefMessage
-                }
-                // Process the messages array.
-                processNdefMessages(messages)
+            val byteId = checkIntent.getByteArrayExtra(NfcAdapter.EXTRA_ID)
+            var id = ""
+            for (b in byteId) {
+                val st = String.format("%02X", b)
+                id += st
             }
 
-            // Simple variant: assume we have 1x URI record
-            //if (rawMessages != null && rawMessages.isNotEmpty()) {
-            //    val ndefMsg = rawMessages[0] as NdefMessage
-            //    if (ndefMsg.records != null && ndefMsg.records.isNotEmpty()) {
-            //        val ndefRecord = ndefMsg.records[0]
-            //        if (ndefRecord.toUri() != null) {
-            //            logMessage("URI detected", ndefRecord.toUri().toString())
-            //        } else {
-            //            // Other NFC Tags
-            //            logMessage("Payload", ndefRecord.payload.contentToString())
-            //        }
-            //    }
-            //}
+            handleScanResult(id)
 
+//            val rawMessages = checkIntent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES)
+////            logMessage("Raw messages", rawMessages.size.toString())
+//
+//            // Complete variant: parse NDEF messages
+//            if (rawMessages != null) {
+//                val messages = arrayOfNulls<NdefMessage?>(rawMessages.size)// Array<NdefMessage>(rawMessages.size, {})
+//                for (i in rawMessages.indices) {
+//                    messages[i] = rawMessages[i] as NdefMessage
+//                }
+//                // Process the messages array.
+//
+//                processNdefMessages(messages)
+//            }
         }
     }
 
@@ -432,6 +440,7 @@ class MainActivity : AppCompatActivity(),
                     if (curRecord.toUri() != null) {
                         // URI NDEF Tag
 //                        logMessage("- URI", curRecord.toUri().toString())
+                        toast(curRecord.toUri().toString())
                     } else {
                         // Other NDEF Tags - simply print the payload
 //                        logMessage("- Contents", curRecord.payload.contentToString())
@@ -479,12 +488,12 @@ class MainActivity : AppCompatActivity(),
                     if (transactions.size > 0 ) {
                         val famoco = it.where<Device>().findFirst()
                         val history = it.createObject<History>()
-                        val jsonData = JSONObject()
                         val jsonArray = JSONArray()
                         val formatDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
                         history.device_name = famoco?.deviceName
                         history.created_at = formatDateTime.format(Date())
                         transactions.forEach { v ->
+                            val jsonData = JSONObject()
                             jsonData.put("famocoId", v.famocoId)
                             jsonData.put("famocoName", v.famocoName)
                             jsonData.put("tEventName", v.tEventName)

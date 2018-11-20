@@ -11,6 +11,9 @@
     <uses-permission android:name="android.permission.NFC" />
     <uses-feature android:name="android.hardware.nfc" android:required="true" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <application
         android:name=".base.BaseApp"
@@ -58,6 +61,8 @@
                 android:resource="@xml/nfc_tech" />
         </activity>
         <activity android:name=".auth.LoginActivity" />
+        <uses-library android:name="android.test.runner"
+            android:required="false" />
     </application>
 
 </manifest>
