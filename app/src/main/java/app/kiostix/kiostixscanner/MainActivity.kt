@@ -36,7 +36,6 @@ import de.siegmar.fastcsv.writer.CsvAppender
 import de.siegmar.fastcsv.writer.CsvWriter
 import es.dmoral.toasty.Toasty
 import io.realm.Realm
-import io.realm.exceptions.RealmException
 import io.realm.kotlin.createObject
 import io.realm.kotlin.delete
 import io.realm.kotlin.where
@@ -60,7 +59,6 @@ import javax.mail.internet.MimeBodyPart
 import javax.mail.internet.MimeMessage
 import javax.mail.internet.MimeMultipart
 import kotlin.collections.ArrayList
-import kotlin.experimental.and
 
 class MainActivity : AppCompatActivity(),
         AdapterView.OnItemSelectedListener,
@@ -79,15 +77,15 @@ class MainActivity : AppCompatActivity(),
     var PARAM_BUM_TIMEOUT: Int = LASER_ON_PRIM.toInt()
     var PARAM_VAL_TIMEOUT: Int = 990
 
-//    init {
-//        try {
-//            System.loadLibrary("IAL")
-//            System.loadLibrary("SDL")
-//            System.loadLibrary("barcodereader44")
-//        } catch (e: Exception) {
-//            toast(e.toString())
-//        }
-//    }
+    init {
+        try {
+            System.loadLibrary("IAL")
+            System.loadLibrary("SDL")
+            System.loadLibrary("barcodereader44")
+        } catch (e: Exception) {
+            toast(e.toString())
+        }
+    }
 
     enum class Mode {
         UNAVAILABLE,

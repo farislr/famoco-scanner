@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "474073012968",
+    "firebase_url": "https://famoco-96a53.firebaseio.com",
+    "project_id": "famoco-96a53",
+    "storage_bucket": "famoco-96a53.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:474073012968:android:e18468ea1a67164d",
+        "android_client_info": {
+          "package_name": "app.kiostix.kiostixscanner"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "474073012968-9j0vp8rdtdtva6jlp57a2rrp2lfp51ok.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.kiostix.kiostixscanner",
+            "certificate_hash": "d70aeb5290f103efccd931c5f0152c408bfa4786"
+          }
+        },
+        {
+          "client_id": "474073012968-tf8q5a7ivkqbiubl1hg7ehu05uukhr2q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASlUeS4JpUw745JVKe7lWBBc8m83hB76U"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "474073012968-tf8q5a7ivkqbiubl1hg7ehu05uukhr2q.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
